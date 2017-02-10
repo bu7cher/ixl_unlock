@@ -211,7 +211,7 @@ update_nvm(const char *ifname)
 		if (ioctl(s, SIOCGDRVSPEC, &req) == -1)
 			err(2, "ioctl: ");
 		value = *(uint16_t *)nvm->data;
-		printf("PHY Capabilities Misc%d: 0x%04x", i, value);
+		printf("PHY Capabilities LAN %d Misc0: 0x%04x", i, value);
 		if ((value & (1 << 11)) == 0) {
 			printf(" skipped\n");
 			continue;
