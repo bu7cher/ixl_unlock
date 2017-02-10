@@ -89,7 +89,7 @@ usage(const char *name)
 	exit(0);
 }
 
-#define	PHY_CAP_SIZE	0x0d
+#define	PHY_CAP_SIZE	0x0c
 #define	PHY_CAP_OFFSET	0x19
 static int
 show_info(const char *ifname, uint16_t *offp)
@@ -206,7 +206,8 @@ update_nvm(const char *ifname)
 		/* Read PHY Capabilities Misc[i] */
 		nvm->command = I40E_NVM_READ;
 		nvm->config = I40E_NVM_SA << I40E_NVM_TRANS_SHIFT;
-		nvm->offset =  (offset + i * 0x0c + 0x08) * sizeof(uint16_t);
+		nvm->offset =  (offset + i * PHY_CAP_SIZE +
+		    0x08) * sizeof(uint16_t);
 		nvm->data_size = sizeof(uint16_t); /* in bytes */
 		if (ioctl(s, SIOCGDRVSPEC, &req) == -1)
 			err(2, "ioctl: ");
@@ -220,7 +221,8 @@ update_nvm(const char *ifname)
 		/* Write updated value */
 		nvm->command = I40E_NVM_WRITE;
 		nvm->config = I40E_NVM_SA << I40E_NVM_TRANS_SHIFT;
-		nvm->offset =  (offset + i * 0x0c + 0x08) * sizeof(uint16_t);
+		nvm->offset =  (offset + i * PHY_CAP_SIZE +
+		    0x08) * sizeof(uint16_t);
 		nvm->data_size = sizeof(uint16_t); /* in bytes */
 		*(uint16_t *)nvm->data = value;
 		if (ioctl(s, SIOCSDRVSPEC, &req) == -1)
