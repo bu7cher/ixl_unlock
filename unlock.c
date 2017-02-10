@@ -82,11 +82,57 @@ static void
 usage(const char *name)
 {
 
-	printf("Usage: %s [args] <ifname>\n", name);
+	printf("Usage: %s [opts] <ifname> [offset nwords]\n", name);
 	printf("	-h	show this message\n");
 	printf("	-g	show NVM content to check validness\n");
 	printf("	-u	unlock the card and modify NVM\n");
+	printf("	-l 	list NVM content at specfied offset\n"
+	       "		additional arguments are offset and nwords\n");
 	exit(0);
+}
+
+static void
+list_info(int argc, char **argv)
+{
+	struct ifdrv req;
+	struct i40e_nvm_access *nvm;
+	uint16_t *ptr, offset, nwords;
+	int i, s;
+
+	offset = argc > 1 ? strtol(argv[1], 0, 0): 0;
+	nwords = argc > 2 ? strtol(argv[2], 0, 0): 0x50;
+
+	if (nwords > I40E_NVMUPD_MAX_DATA / sizeof(uint16_t))
+		errx(1, "nwords should be less or equal to %lu\n",
+		    I40E_NVMUPD_MAX_DATA / sizeof(uint16_t));
+
+	nvm = calloc(1, sizeof(*nvm) + nwords * sizeof(uint16_t));
+	if (nvm == NULL)
+		err(2, "calloc: ");
+
+	s = socket(AF_INET, SOCK_DGRAM, 0);
+	if (s == -1)
+		err(3, "socket: ");
+
+	memset(&req, 0, sizeof(req));
+	strlcpy(req.ifd_name, argv[0], sizeof(req.ifd_name));
+	req.ifd_cmd = I40E_NVM_ACCESS;
+	req.ifd_len = sizeof(*nvm) + nwords * sizeof(uint16_t);
+	req.ifd_data = nvm;
+
+	nvm->command = I40E_NVM_READ;
+	nvm->config = I40E_NVM_SA << I40E_NVM_TRANS_SHIFT;
+	nvm->offset = offset * sizeof(uint16_t);
+	nvm->data_size = nwords * sizeof(uint16_t);
+	if (ioctl(s, SIOCGDRVSPEC, &req) == -1)
+		err(4, "ioctl: ");
+
+	ptr = (uint16_t *)nvm->data;
+	printf("Read %u words of NVM at offset 0x%08x:\n", nwords, offset);
+	for (i = 0; i < nwords; i++)
+		printf("%08x  %02x  0x%04x\n", offset, i, *ptr++);
+	close(s);
+	free(nvm);
 }
 
 #define	PHY_CAP_SIZE	0x0c
@@ -257,16 +303,19 @@ main(int argc, char **argv)
 
 	name = argv[0];
 	cmd = 0;
-	while ((ch = getopt(argc, argv, "ugh:")) != -1) {
+	while ((ch = getopt(argc, argv, "uglh:")) != -1) {
 		switch (ch) {
 		default:
 			usage(name);
 			break;
 		case 'g':
-			cmd = 1;
+			cmd |= (1 << 0);
+			break;
+		case 'l':
+			cmd |= (1 << 1);
 			break;
 		case 'u':
-			cmd = 2;
+			cmd |= (1 << 2);
 			break;
 		}
 	}
@@ -277,11 +326,18 @@ main(int argc, char **argv)
 		usage(name);
 	if (argc < 1)
 		errx(1, "ifname is required\n");
-	if (cmd == 1)
+	switch (cmd) {
+	case 1:
 		show_info(argv[0], NULL);
-	else
+		break;
+	case 2:
+		list_info(argc, argv);
+		break;
+	case 4:
 		update_nvm(argv[0]);
-
+	default:
+		errx(2, "all options are mutually exclusive\n");
+	}
 	return (0);
 }
 
