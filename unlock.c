@@ -34,15 +34,11 @@ __FBSDID("$FreeBSD$");
 #include <sys/sockio.h>
 #include <sys/stdint.h>
 
+#include <net/if.h>
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
-
-#include <net/ethernet.h>
-#include <net/if.h>
-#include <net/route.h>
-
-#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <err.h>
